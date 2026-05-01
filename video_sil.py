@@ -9,10 +9,33 @@ import os
 import tempfile
 from ultralytics import YOLO
 import subprocess
+# pip cache purge
+# conda install numpy=1.26.4 -c conda-forge
+# pip install ultralytics==8.3.0 --no-cache-dir
+# 限制cpu核心
+# pip install psutil
+import psutil
+# import os
+# import time
+
+
 
 # 解决 PyTorch 2.6+ 权重加载安全问题
 import torch
 _original_torch_load = torch.load
+
+def limit_to_specific_cores(core_ids):
+    """
+    将当前进程绑定到指定的CPU核心列表
+    :param core_ids: 整数列表，例如  表示只使用核心0，[0, 1] 表示使用核心0和1
+    """
+    try:
+        p = psutil.Process(os.getpid())
+        # 设置CPU亲和性
+        p.cpu_affinity(core_ids)
+        print(f"成功将进程 {os.getpid()} 绑定到核心: {p.cpu_affinity()}")
+    except Exception as e:
+        print(f"设置CPU亲和性失败: {e}")
 
 def safe_torch_load(*args, **kwargs):
     kwargs['weights_only'] = False
@@ -168,7 +191,7 @@ def process_video(input_path, output_path, use_gpu=True):
     device_capability = torch.cuda.get_device_capability()
     if int(device_capability[0]) < 7:
         print(f"GPU计算能力{device_capability}不支持FP16，使用FP32")
-        return None
+        # return None
     
     model = YOLO(model_path)
     if use_gpu:
@@ -247,6 +270,7 @@ def process_video(input_path, output_path, use_gpu=True):
         
         try:
             # 由于 YOLOv8.0.0 的 predict 方法不支持直接传入 numpy 数组，我们需要先保存到临时文件 ----这里注释掉了，因为升级到了yolo 8.3就可以了
+            # pip install ultralytics==8.3.0
             # cv2.imwrite(temp_path, frame)
             
             
@@ -339,6 +363,7 @@ def process_video(input_path, output_path, use_gpu=True):
     print(f'\n已保存检测结果到：{output_path}')
     print('='*50)
 
+    exit()
     # 转码为 H.265 (HEVC) 格式，输出文件名加后缀 '_h265'
     name, ext = os.path.splitext(output_path)
     h265_output = f"{name}_h265.mp4"
@@ -394,6 +419,11 @@ def process_video(input_path, output_path, use_gpu=True):
 
 
 if __name__ == '__main__':
+
+    # 示例：限制程序只使用第0号核心
+    # 注意：核心编号从0开始，可以通过 psutil.cpu_count() 查看总核心数
+    limit_to_specific_cores([0,1]) # 只使用核心0 1，其他核心不参与计算
+
     parser = argparse.ArgumentParser(description='视频人物黑色剪影处理')
     parser.add_argument('input', help='输入视频路径')
     parser.add_argument('-o', '--output', default='output.mp4', help='输出视频路径')
