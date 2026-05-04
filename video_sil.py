@@ -179,6 +179,7 @@ def process_video(input_path, output_path, use_gpu=True):
     """处理视频：检测人体并遮挡为黑色剪影"""
     
     DEVICE = 'cuda:0' if use_gpu else 'cpu'
+    # model_path = 'yolov8n-seg.pt' #
     model_path = 'yolov8s-seg.pt'
     
     print(f"{'='*50}")
